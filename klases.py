@@ -1,5 +1,12 @@
 import sqlite3
 import requests
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+fernet_key = os.getenv("FERNET_KEY")
+cipher = Fernet(fernet_key)
 
 class Lietotajs:
     def __init__(self, vards, uzvards):
@@ -10,13 +17,17 @@ class Lietotajs:
         conn = sqlite3.connect('lietotajs.db')
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id FROM lietotajs WHERE vards = ? AND uzvards = ?", (self.vards, self.uzvards))
+        # Šifrē vārdu un uzvārdu pirms meklēšanas/saglabāšanas
+        encrypted_vards = cipher.encrypt(self.vards.encode('utf-8'))
+        encrypted_uzvards = cipher.encrypt(self.uzvards.encode('utf-8'))
+
+        cursor.execute("SELECT id FROM lietotajs WHERE vards = ? AND uzvards = ?", (encrypted_vards, encrypted_uzvards))
         rezultats = cursor.fetchone()
 
         if rezultats:
             lietotaja_id = rezultats[0]
         else:
-            cursor.execute("INSERT INTO lietotajs (vards, uzvards) VALUES (?, ?)", (self.vards, self.uzvards))
+            cursor.execute("INSERT INTO lietotajs (vards, uzvards) VALUES (?, ?)", (encrypted_vards, encrypted_uzvards))
             conn.commit()
             lietotaja_id = cursor.lastrowid
 
